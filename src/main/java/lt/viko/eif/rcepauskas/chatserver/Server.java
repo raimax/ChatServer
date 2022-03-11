@@ -1,37 +1,42 @@
 package lt.viko.eif.rcepauskas.chatserver;
 
-import java.net.*;
-import java.io.*;
+import java.io.IOException;
+import java.net.ServerSocket;
+import java.net.Socket;
 
 public class Server {
     private ServerSocket serverSocket;
-    private Socket clientSocket;
-    private PrintWriter out;
-    private BufferedReader in;
 
-    public Server() {
+    public void start(int port) {
+        try {
+            serverSocket = new ServerSocket(port);
 
-    }
+            while (!serverSocket.isClosed()) {
+                Socket socket = serverSocket.accept();
+                System.out.println("A new client connected");
+                ClientHandler clientHandler = new ClientHandler(socket);
 
-    public void start(int port) throws java.io.IOException {
-        serverSocket = new ServerSocket(port);
-        clientSocket = serverSocket.accept();
-        System.out.println("Client connected");
-
-        out = new PrintWriter(clientSocket.getOutputStream(), true);
-        in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-
-        while (true) {
-            if (in.ready()) {
-                System.out.println(in.readLine());
+                Thread thread = new Thread(clientHandler);
+                thread.start();
             }
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
+        finally {
+            stop();
         }
     }
 
-    public void stop() throws java.io.IOException {
-        in.close();
-        out.close();
-        clientSocket.close();
-        serverSocket.close();
+    public void stop() {
+        try {
+            if (serverSocket != null) {
+                serverSocket.close();
+            }
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
     }
+
 }
