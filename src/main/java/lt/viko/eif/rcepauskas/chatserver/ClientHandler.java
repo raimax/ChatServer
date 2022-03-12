@@ -2,8 +2,10 @@ package lt.viko.eif.rcepauskas.chatserver;
 
 import java.io.*;
 import java.net.Socket;
-import java.net.SocketException;
+import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.ConcurrentModificationException;
 import java.util.List;
 
 public class ClientHandler implements Runnable {
@@ -35,13 +37,19 @@ public class ClientHandler implements Runnable {
         while (clientSocket.isConnected()) {
             try {
                 messageFromClient = in.readLine();
-                broadcastMessage(clientUsername + ": " + messageFromClient);
+                broadcastMessage(String.format("[%s] %s: %s", getCurrentTime(), clientUsername, messageFromClient));
             }
             catch (IOException e) {
                 close();
                 break;
             }
         }
+    }
+
+    private String getCurrentTime() {
+        Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+        SimpleDateFormat timeNow = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        return timeNow.format(timestamp);
     }
 
     private void broadcastMessage(String message) {
