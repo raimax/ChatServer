@@ -4,26 +4,27 @@ import java.io.*;
 import java.net.Socket;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.ConcurrentModificationException;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class ClientHandler implements Runnable {
 
-    private static List<ClientHandler> clientHandlers = new ArrayList<>();
+    private static List<ClientHandler> clientHandlers = new CopyOnWriteArrayList<>();
+    private static List<String> onlineUsers = new CopyOnWriteArrayList<>();
     private Socket clientSocket;
+    private PrintWriter out;
     private BufferedReader in;
-    private BufferedWriter out;
     private String clientUsername;
 
     public ClientHandler(Socket socket) {
         try {
             this.clientSocket = socket;
-            this.out = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream()));
-            this.in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+            out = new PrintWriter(clientSocket.getOutputStream(), true);
+            in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
             this.clientUsername = in.readLine();
+            broadcastMessage("[SERVER] " + clientUsername + " has entered the chat");
             clientHandlers.add(this);
-            broadcastMessage("[Server] " + clientUsername + " has entered the chat");
+            onlineUsers.add(clientUsername);
         }
         catch (IOException e) {
             close();
@@ -36,8 +37,13 @@ public class ClientHandler implements Runnable {
 
         while (clientSocket.isConnected()) {
             try {
-                messageFromClient = in.readLine();
-                broadcastMessage(String.format("[%s] %s: %s", getCurrentTime(), clientUsername, messageFromClient));
+                if ((messageFromClient = in.readLine()) != null) {
+                    broadcastMessage(String.format("[%s] %s: %s", getCurrentTime(), clientUsername, messageFromClient));
+                }
+                else {
+                    close();
+                    break;
+                }
             }
             catch (IOException e) {
                 close();
@@ -54,23 +60,18 @@ public class ClientHandler implements Runnable {
 
     private void broadcastMessage(String message) {
         for (ClientHandler clientHandler : clientHandlers) {
-            try {
-                clientHandler.out.write(message);
-                clientHandler.out.newLine();
-                clientHandler.out.flush();
-            }
-            catch (IOException e) {
-               close();
-            }
+            clientHandler.out.println(message);
         }
     }
 
     private void close() {
         removeClientHandler();
+        removeOnlineUser(clientUsername);
         try {
             in.close();
             out.close();
             clientSocket.close();
+
         }
         catch (IOException e) {
             e.printStackTrace();
@@ -80,5 +81,9 @@ public class ClientHandler implements Runnable {
     private void removeClientHandler() {
         clientHandlers.remove(this);
         broadcastMessage("[SERVER] " + clientUsername + " has left the chat");
+    }
+
+    private void removeOnlineUser(String username) {
+        onlineUsers.remove(username);
     }
 }
