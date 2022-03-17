@@ -20,8 +20,8 @@ public class Server {
                 thread.start();
             }
         }
-        catch (IOException e) {
-            e.printStackTrace();
+        catch (IOException ex) {
+            System.out.println("Error in start: " + ex.getMessage());
         }
         finally {
             stop();
