@@ -11,16 +11,18 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 public class ClientHandler implements Runnable {
 
-    private List<ClientHandler> clientHandlers = new CopyOnWriteArrayList<>();
-    private List<String> onlineUsers = new CopyOnWriteArrayList<>();
     private Socket clientSocket;
     private ObjectOutputStream out;
     private ObjectInputStream in;
     private String clientUsername;
+    private List<ClientHandler> clientHandlers;
+    private List<String> onlineUsers;
 
-    public ClientHandler(Socket socket) {
+    public ClientHandler(Socket socket, List<ClientHandler> clientHandlers, List<String> onlineUsers) {
         try {
             this.clientSocket = socket;
+            this.clientHandlers = clientHandlers;
+            this.onlineUsers = onlineUsers;
             out = new ObjectOutputStream(clientSocket.getOutputStream());
             in = new ObjectInputStream(clientSocket.getInputStream());
 
@@ -46,22 +48,16 @@ public class ClientHandler implements Runnable {
     public void run() {
         SocketMessage messageFromClient;
 
-        while (clientSocket.isConnected()) {
-            try {
-                if ((messageFromClient = (SocketMessage) in.readObject()) != null) {
-                    broadcastMessage(
-                            SocketMessage.MessageType.MESSAGE,
-                            String.format("[%s] %s: %s", getCurrentTime(), clientUsername, messageFromClient.getMessage()));
-                }
-                else {
-                    close();
-                    break;
-                }
+        try {
+            while ((messageFromClient = (SocketMessage) in.readObject()) != null) {
+                broadcastMessage(
+                        SocketMessage.MessageType.MESSAGE,
+                        String.format("[%s] %s: %s", getCurrentTime(), clientUsername, messageFromClient.getMessage()));
             }
-            catch (IOException | ClassNotFoundException e) {
-                close();
-                break;
-            }
+            close();
+        }
+        catch (IOException | ClassNotFoundException e) {
+            close();
         }
     }
 
@@ -101,6 +97,7 @@ public class ClientHandler implements Runnable {
             in.close();
             out.close();
             clientSocket.close();
+            System.out.println("Client disconnected");
         }
         catch (IOException ex) {
             System.out.println("Error closing socket: " + ex.getMessage());

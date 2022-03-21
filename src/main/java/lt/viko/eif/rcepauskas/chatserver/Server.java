@@ -3,9 +3,13 @@ package lt.viko.eif.rcepauskas.chatserver;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class Server {
     private ServerSocket serverSocket;
+    private List<ClientHandler> clientHandlers = new CopyOnWriteArrayList<>();
+    private List<String> onlineUsers = new CopyOnWriteArrayList<>();
 
     public void start(int port) {
         try {
@@ -14,7 +18,7 @@ public class Server {
             while (!serverSocket.isClosed()) {
                 Socket socket = serverSocket.accept();
                 System.out.println("A new client connected");
-                ClientHandler clientHandler = new ClientHandler(socket);
+                ClientHandler clientHandler = new ClientHandler(socket, clientHandlers, onlineUsers);
 
                 Thread thread = new Thread(clientHandler);
                 thread.start();
@@ -34,8 +38,8 @@ public class Server {
                 serverSocket.close();
             }
         }
-        catch (IOException e) {
-            e.printStackTrace();
+        catch (IOException ex) {
+            System.out.println("Error stopping server: " + ex.getMessage());
         }
     }
 
